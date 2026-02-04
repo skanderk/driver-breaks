@@ -39,8 +39,20 @@ export  type HorizonSchedule = DailySchedule[];
  * schedule. 
  */
 export interface Infringement {
-    articleNumber: number
+    articleNumber: ArticleNumber
     brokenRule: string
     day: string
     offendingSlotIndex: number  
+}
+
+/**
+ * Implements a valid 561/2006 article number. 
+ */
+export class ArticleNumber {
+    public constructor(readonly value: number) {
+        // Note: Upper bound 29 might be lower as some articles cannot be enforced computationally.
+        if (value <= 0 || value > 29) {
+            throw new Error(`Invalid article number, expected a value in [1, 29], got ${value}`);
+        }
+    }
 }
