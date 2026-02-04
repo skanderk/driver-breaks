@@ -82,7 +82,7 @@ export class BreaksComplianceChecker implements ComplianceChecker {
 
                     // We allow the driver to exceed maxDrivingDurationSec if they are taking a rest right afterwards.
                     if (drivingTime > this.maxDrivingDurationSec && infringementReported === false &&
-                        !(!this.isLastSlot(schedule, i) && schedule.slotsSequence[i + 1].slotType !== 'rest')) {
+                        (!this.isLastSlot(schedule, i) && schedule.slotsSequence[i + 1].slotType !== 'rest')) {
                         infringements.push({
                             articleNumber: this.getArticle(),
                             day: schedule.day,
