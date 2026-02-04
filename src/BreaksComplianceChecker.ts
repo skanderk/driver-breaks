@@ -101,6 +101,7 @@ export class BreaksComplianceChecker implements ComplianceChecker {
                     if (curSlotDurationSec >= this.singleBreakDurationSec) {
                         drivingTime = 0;
                         infringementReported = false;
+                        takingSplitBreak = false;
                     } else { // This is a split break
                         if (!takingSplitBreak) {
                             if (curSlotDurationSec >= this.splitBreakDurations[0]) {

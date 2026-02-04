@@ -126,6 +126,22 @@ describe("BreaksComplianceChecker - single day", () => {
     expect(infringements).to.be.empty;
   });
 
+  it("accepts a compliant schedule with a the first part of a split break followed by a single break", () => {
+    const schedule = [
+      day("2026-02-01", [
+        slot("drive", maxDriveSec - 120 * 60),
+        slot("break", splitBreaks[0]),
+        slot("drive", 40 * 60),
+        slot("break", singleBreakSec),
+        slot("drive", 60 * 60)
+      ])
+    ];
+
+    const infringements = checker.check(schedule);
+
+    expect(infringements).to.be.empty;
+  });
+
 
   it("flags insufficient first part of a split break", () => {
     const schedule = [
