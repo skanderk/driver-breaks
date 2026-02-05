@@ -75,75 +75,91 @@ export class BreaksComplianceChecker implements ComplianceChecker {
 
         for (let i = 0; i < schedule.slotsSequence.length; i++) {
             const currentSlot = schedule.slotsSequence[i];
-            const curSlotDurationSec = currentSlot.durationSeconds;
 
             switch (currentSlot.slotType) {
                 case 'drive':
-                    this.state.drivingTime += curSlotDurationSec;
-
-                    // We allow the driver to exceed maxDrivingDurationSec if they are taking a rest right afterwards.
-                    if (this.state.drivingTime > this.maxDrivingDurationSec && this.state.infringementReported === false &&
-                        (!this.isLastSlot(schedule, i) && schedule.slotsSequence[i + 1].slotType !== 'rest')) {
-                        this.state.infringements.push({
-                            articleNumber: this.getArticle(),
-                            day: schedule.day,
-                            brokenRule: `Driver did not take a break: drive time without a break ${this.state.drivingTime}`,
-                            offendingSlotIndex: i
-                        });
-                        this.state.infringementReported = true;
-                    }
+                    this.onDrive(schedule, i);
                     break;
                 case 'rest':
-                    this.state.drivingTime = 0; // Just in case the rest happens in the middle of a daily schedule.
-                    this.state.infringementReported = false;
-                    this.state.takingSplitBreak = false;
+                    this.onRest();
                     break;
                 case 'break':
-                    if (curSlotDurationSec >= this.singleBreakDurationSec) {
-                        this.state.drivingTime = 0;
-                        this.state.infringementReported = false;
-                        this.state.takingSplitBreak = false;
-                    } else { // This is a split break
-                        if (!this.state.takingSplitBreak) {
-                            if (curSlotDurationSec >= this.splitBreakDurations[0]) {
-                                this.state.takingSplitBreak = true;
-                            } else {
-                                this.state.infringements.push({
-                                    articleNumber: this.getArticle(),
-                                    day: schedule.day,
-                                    brokenRule: `Driver took an insufficient split break: 1st break duration ${curSlotDurationSec}`,
-                                    offendingSlotIndex: i
-                                });
-                            }
-                        } else { // The driver already took the first part of a split break and this is the second one.
-                            if (curSlotDurationSec >= this.splitBreakDurations[1]) {
-                                this.state.drivingTime = 0;
-                            } else {
-                                this.state.infringements.push({
-                                    articleNumber: this.getArticle(),
-                                    day: schedule.day,
-                                    brokenRule: `Driver took an insufficient split break: 2nd break duration ${curSlotDurationSec}`,
-                                    offendingSlotIndex: i
-                                });
-
-                                // We still reset drivingTime to allow the checker to recover from this infrigement and detect 
-                                // other enfrigements down the road if any (think compilers trying to recover from an error 
-                                // in order to detect other errors in the program).
-                                this.state.drivingTime = 0;
-                            }
-
-                            this.state.takingSplitBreak = false; // Reset flag in either case.
-                            this.state.infringementReported = false;
-                        }
-                    }
+                    this.onBreak(schedule, i);
             }
         }
 
         return this.state.infringements;
     }
 
+
+    private onDrive(schedule: DailySchedule, slotIdx: number): void {
+        const currentSlot = schedule.slotsSequence[slotIdx];
+        this.state.drivingTime += currentSlot.durationSeconds;
+
+        // We allow the driver to exceed maxDrivingDurationSec if they are taking a rest right afterwards.
+        if (this.state.drivingTime > this.maxDrivingDurationSec && this.state.infringementReported === false &&
+            (!this.isLastSlot(schedule, slotIdx) && schedule.slotsSequence[slotIdx + 1].slotType !== 'rest')) {
+            this.state.infringements.push({
+                articleNumber: this.getArticle(),
+                day: schedule.day,
+                brokenRule: `Driver did not take a break: drive time without a break ${this.state.drivingTime}`,
+                offendingSlotIndex: slotIdx
+            });
+            this.state.infringementReported = true;
+        }
+    }
+
     private isLastSlot(schedule: DailySchedule, slotIndex: number): boolean {
         return slotIndex === schedule.slotsSequence.length - 1;
+    }
+
+
+    private onRest(): void {
+        this.state.drivingTime = 0; // Just in case the rest happens in the middle of a daily schedule.
+        this.state.infringementReported = false;
+        this.state.takingSplitBreak = false;
+    }
+
+    private onBreak(schedule: DailySchedule, slotIndex: number): void {
+        const curSlotDurationSec = schedule.slotsSequence[slotIndex].durationSeconds;
+
+        if (curSlotDurationSec >= this.singleBreakDurationSec) {
+            this.state.drivingTime = 0;
+            this.state.infringementReported = false;
+            this.state.takingSplitBreak = false;
+        } else { // This is a split break
+            if (!this.state.takingSplitBreak) {
+                if (curSlotDurationSec >= this.splitBreakDurations[0]) {
+                    this.state.takingSplitBreak = true;
+                } else {
+                    this.state.infringements.push({
+                        articleNumber: this.getArticle(),
+                        day: schedule.day,
+                        brokenRule: `Driver took an insufficient split break: 1st break duration ${curSlotDurationSec}`,
+                        offendingSlotIndex: slotIndex
+                    });
+                }
+            } else { // The driver already took the first part of a split break and this is the second one.
+                if (curSlotDurationSec >= this.splitBreakDurations[1]) {
+                    this.state.drivingTime = 0;
+                } else {
+                    this.state.infringements.push({
+                        articleNumber: this.getArticle(),
+                        day: schedule.day,
+                        brokenRule: `Driver took an insufficient split break: 2nd break duration ${curSlotDurationSec}`,
+                        offendingSlotIndex: slotIndex
+                    });
+
+                    // We still reset drivingTime to allow the checker to recover from this infrigement and detect 
+                    // other enfrigements down the road if any (think compilers trying to recover from an error 
+                    // in order to detect other errors in the program).
+                    this.state.drivingTime = 0;
+                }
+
+                this.state.takingSplitBreak = false; // Reset flag in either case.
+                this.state.infringementReported = false;
+            }
+        }
     }
 }
 
